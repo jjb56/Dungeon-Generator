@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dungeon Generator</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+    }
+    canvas {
+      border: 1px solid #ccc;
+      background: #fff;
+      margin-top: 10px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Dungeon Generator</h1>
+  <canvas id="dungeonCanvas" width="1000" height="800"></canvas>
+  <br />
+  <button onclick="generateDungeon()">Regenerate</button>
+
+  <script src="dungeon.js"></script>
+</body>
+</html>
