@@ -1,9 +1,10 @@
+
 const canvas = document.getElementById("dungeonCanvas");
 const ctx = canvas.getContext("2d");
 
 const GRID_SIZE = 7;
-const ROOM_SIZE = 60;
-const ROOM_MARGIN = 40;
+const ROOM_SIZE = 64;
+const ROOM_MARGIN = 64;
 const START_X = 100;
 const START_Y = 100;
 const MAX_ROOMS = rollDice(2, 6) + 3;
@@ -19,7 +20,7 @@ function rollDice(count, sides) {
   return Array.from({ length: count }).reduce(r => r + Math.ceil(Math.random() * sides), 0);
 }
 
-// ===== Type Rolls =====
+// ===== Room and Door Rolls =====
 function rollRoomType() {
   const roll = rollDice(1, 12);
   if (roll <= 3) return "Combat";
@@ -44,20 +45,20 @@ function rollDoorType() {
   return "Fake Door";
 }
 
-// ===== Generation =====
+// ===== Dungeon Generation =====
 function generateDungeon() {
   dungeon = {};
-  const center = [Math.floor(GRID_SIZE / 2), Math.floor(GRID_SIZE /2)];
+  const center = [Math.floor(GRID_SIZE / 2), Math.floor(GRID_SIZE / 2)];
   let toPlace = [center];
-  let roomCount = 0;
+  let roomCount = 1;
 
-  addRoom(...center);
+  addRoom(...center, true); // mark starting room
 
   while (roomCount < MAX_ROOMS && toPlace.length > 0) {
     const [x, y] = toPlace.shift();
     const room = dungeon[`${x},${y}`];
 
-    const doorCount = Math.min(rollDice(1, 6), 4);
+    const doorCount = Math.min(rollDice(1, 6), 2); // Limit to 2 connections
     shuffleArray(directions);
 
     let connections = 0;
@@ -67,17 +68,19 @@ function generateDungeon() {
       const nx = x + dx, ny = y + dy;
       const key = `${nx},${ny}`;
       if (nx < 0 || ny < 0 || nx >= GRID_SIZE || ny >= GRID_SIZE) continue;
-      
-      if (!dungeon[key]) {
+
+      if (!dungeon[key] && countExistingNeighbors(nx, ny) < 2) {
         addRoom(nx, ny);
-        room.doors[key] = rollDoorType();
-        dungeon[key].doors[`${x},${y}`] = room.doors[key];
+        const doorType = rollDoorType();
+        room.doors[key] = doorType;
+        dungeon[key].doors[`${x},${y}`] = doorType;
         toPlace.push([nx, ny]);
         roomCount++;
         connections++;
-      } else if (!room.doors[key]) {
-        room.doors[key] = rollDoorType();
-        dungeon[key].doors[`${x},${y}`] = room.doors[key];
+      } else if (dungeon[key] && !room.doors[key]) {
+        const doorType = rollDoorType();
+        room.doors[key] = doorType;
+        dungeon[key].doors[`${x},${y}`] = doorType;
       }
     }
   }
@@ -85,39 +88,37 @@ function generateDungeon() {
   drawDungeon();
 }
 
-function addRoom(x, y) {
+function countExistingNeighbors(x, y) {
+  return directions.reduce((count, [dx, dy]) => {
+    return dungeon[`${x + dx},${y + dy}`] ? count + 1 : count;
+  }, 0);
+}
+
+function addRoom(x, y, isStart = false) {
   const key = `${x},${y}`;
   const type = rollRoomType();
-  const extra = type === "Combat+" ? rollRoomType() : null;
+  const extra = type.startsWith("Combat +") ? type.slice(9) : null;
+  const baseType = type.startsWith("Combat +") ? "Combat +" : type;
+
   dungeon[key] = {
     x, y,
-    type,
+    type: baseType,
     extra,
+    isStart,
     doors: {}
   };
 }
 
-// ===== Draw =====
+// ===== Drawing =====
 function drawDungeon() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.font = "12px sans-serif";
 
+  // === Draw connections first ===
   for (const key in dungeon) {
     const room = dungeon[key];
     const px = START_X + room.x * (ROOM_SIZE + ROOM_MARGIN);
     const py = START_Y + room.y * (ROOM_SIZE + ROOM_MARGIN);
 
-    // Draw room square
-    ctx.fillStyle = "#ccc";
-    ctx.fillRect(px, py, ROOM_SIZE, ROOM_SIZE);
-    ctx.strokeRect(px, py, ROOM_SIZE, ROOM_SIZE);
-
-    // Room labels
-    ctx.fillStyle = "black";
-    ctx.fillText(room.type, px, py + ROOM_SIZE + 12);
-    if (room.extra) ctx.fillText(`+ ${room.extra}`, px, py + ROOM_SIZE + 24);
-
-    // Draw connections
     for (const neighborKey in room.doors) {
       const [nx, ny] = neighborKey.split(",").map(Number);
       const npx = START_X + nx * (ROOM_SIZE + ROOM_MARGIN);
@@ -126,18 +127,61 @@ function drawDungeon() {
       const mx = (px + npx) / 2 + ROOM_SIZE / 2;
       const my = (py + npy) / 2 + ROOM_SIZE / 2;
 
-      // Line
-      ctx.strokeStyle = "black";
+      ctx.strokeStyle = "#999";
       ctx.beginPath();
       ctx.moveTo(px + ROOM_SIZE / 2, py + ROOM_SIZE / 2);
       ctx.lineTo(npx + ROOM_SIZE / 2, npy + ROOM_SIZE / 2);
       ctx.stroke();
 
-      // Door type label
+      // Door label
       ctx.fillStyle = "blue";
-      ctx.fillText(room.doors[neighborKey], mx - 20, my);
+      ctx.font = "10px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(room.doors[neighborKey], mx, my);
     }
   }
+
+  // === Draw rooms on top ===
+  for (const key in dungeon) {
+    const room = dungeon[key];
+    const px = START_X + room.x * (ROOM_SIZE + ROOM_MARGIN);
+    const py = START_Y + room.y * (ROOM_SIZE + ROOM_MARGIN);
+
+    ctx.fillStyle = room.isStart ? "#ffb347" : "#ccc";
+    drawOctagon(px + ROOM_SIZE / 2, py + ROOM_SIZE / 2, ROOM_SIZE);
+    ctx.stroke();
+
+    // Centered room labels
+    ctx.fillStyle = "black";
+    ctx.font = "12px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    
+    const centerX = px + ROOM_SIZE / 2;
+    const centerY = py + ROOM_SIZE / 2;
+    ctx.fillText(room.type, centerX, centerY - (room.extra ? 6 : 0));
+    if (room.extra) ctx.fillText(`+ ${room.extra}`, centerX, centerY + 8);
+  }
+}
+
+
+// Draw an octagon centered at (cx, cy) with approximate width `size`
+function drawOctagon(cx, cy, size) {
+  const angleStep = Math.PI / 4; // 45 degrees
+  const radius = size / Math.sqrt(2.2); // tweak for better sizing
+
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const angle = angleStep * i + Math.PI / 8;
+    const x = cx + radius * Math.cos(angle);
+    const y = cy + radius * Math.sin(angle);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
 }
 
 function shuffleArray(arr) {
@@ -146,3 +190,7 @@ function shuffleArray(arr) {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
 }
+
+// ===== Init =====
+generateDungeon();
+
