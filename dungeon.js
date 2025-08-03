@@ -7,7 +7,7 @@ const ROOM_MARGIN = 40;
 const START_X = 100;
 const START_Y = 100;
 const MAX_ROOMS = rollDice(2, 6) + 3;
-const direction = [
+const directions = [
   [-1, -1], [0, -1], [1, -1],
   [-1, 0],           [1, 0],
   [-1, 1],  [0, 1],  [1, 1]
@@ -16,7 +16,7 @@ const direction = [
 let dungeon = {};
 
 function rollDice(count, sides) {
-  return Array.from({ length: count }).reduce(r => r + Math.random(Math.random() * sides), 0);
+  return Array.from({ length: count }).reduce(r => r + Math.ceil(Math.random() * sides), 0);
 }
 
 // ===== Type Rolls =====
@@ -55,14 +55,14 @@ function generateDungeon() {
 
   while (roomCount < MAX_ROOMS && toPlace.length > 0) {
     const [x, y] = toPlace.shift();
-    const room = dungeon[`${x}, ${y}`];
+    const room = dungeon[`${x},${y}`];
 
     const doorCount = Math.min(rollDice(1, 6), 4);
     shuffleArray(directions);
 
     let connections = 0;
     for (const [dx, dy] of directions) {
-      if (connection >= doorCount) break;
+      if (connections >= doorCount) break;
 
       const nx = x + dx, ny = y + dy;
       const key = `${nx},${ny}`;
@@ -146,21 +146,3 @@ function shuffleArray(arr) {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
 }
-
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
