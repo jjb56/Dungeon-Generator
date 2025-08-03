@@ -5,8 +5,15 @@
   <title>Dungeon Generator</title>
   <style>
     body {
-      font-family: sans-serif;
-      text-align: center;
+  font-family: sans-serif;
+  text-align: center;
+    }
+    .container {
+      border: 1px solid black;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      padding: 5px;
     }
     canvas {
       border: 1px solid #ccc;
@@ -21,8 +28,19 @@
   </style>
 </head>
 <body>
-  <div><div><h1>Dungeon Generator</h1></div><div><button onclick="generateDungeon()">Regenerate</button></div></div>
-  <div><canvas id="dungeonCanvas" width="1000" height="800"></canvas></div>
+  <div class="container">
+    <div class="header">
+      <h1>Dungeon Generator</h1>
+    </div>
+    <div class="btn">
+      <button onclick="generateDungeon()">
+        Regenerate
+      </button>
+    </div>
+    <div class="gen-area">
+      <canvas id="dungeonCanvas" width="1000" height="800"></canvas>
+    </div>
+  </div>
   <br />
   
   <script src="dungeon.js"></script>
